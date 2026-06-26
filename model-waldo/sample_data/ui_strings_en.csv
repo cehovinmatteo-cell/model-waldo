@@ -1,0 +1,16 @@
+string_id,source_text,context,max_length
+login_title,Welcome back to Acme Cloud,Login screen title,32
+login_cta,Sign in,Primary button,12
+password_reset,Reset your password,Account recovery link,28
+upload_success,{{file_name}} uploaded successfully,System notification,60
+upload_error,We couldn't upload {{file_name}}. Try again.,System error,80
+storage_warning,You're using {used_storage} of {total_storage},Dashboard storage warning,65
+team_invite,%s invited you to join the workspace,Email/in-app notification,70
+billing_update,Update payment method,Billing settings button,28
+security_alert,New sign-in detected from {{location}},Security notification,70
+confirm_delete,Delete this project permanently?,Destructive action confirmation,38
+cancel,CANCEL,Button label,10
+save_changes,Save changes,Button label,18
+trial_banner,Your Pro trial ends in {{days_left}} days,Banner message,60
+api_key_label,API key,Settings field label,18
+permissions_error,You don't have permission to view this page,Access error,75
