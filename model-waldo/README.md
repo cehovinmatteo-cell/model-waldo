@@ -59,21 +59,23 @@ This MVP uses the OpenAI API for content analysis. Do not upload confidential, r
 pip install -r requirements.txt
 ```
 
-### 2. Add OpenAI API key
+## 2. OpenAI API Key
 
-Either set an environment variable:
+The deployed Streamlit app uses a private OpenAI API key stored in Streamlit Community Cloud secrets. The key is not included in this repository.
 
-```bash
-export OPENAI_API_KEY="sk-your-key-here"
-```
+For local development only, set your own OpenAI API key as an environment variable:
 
-Or copy the example Streamlit secrets file:
+export OPENAI_API_KEY="your-openai-api-key"
 
-```bash
+Or create a local Streamlit secrets file:
+
 cp .streamlit/secrets.toml.example .streamlit/secrets.toml
-```
 
-Then edit `.streamlit/secrets.toml`.
+Then edit .streamlit/secrets.toml and add your own key:
+
+OPENAI_API_KEY = "your-openai-api-key"
+
+Do not commit .streamlit/secrets.toml to GitHub.
 
 ### 3. Run the app
 
