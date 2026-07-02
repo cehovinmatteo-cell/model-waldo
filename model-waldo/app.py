@@ -1195,8 +1195,8 @@ dev_inspect_mode = st.sidebar.toggle(
     value=False,
     help="Surfaces internal calculation matrices, structural token allocations, and raw model schema parameters live."
 )
-    st.header("1. Add Source Content")
-    upload_tab, paste_tab = st.tabs(["Upload file", "Paste text"])
+st.header("1. Add Source Content")
+upload_tab, paste_tab = st.tabs(["Upload file", "Paste text"])
 
     extracted_text = ""
     metadata: Dict[str, Any] = {}
