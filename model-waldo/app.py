@@ -1188,20 +1188,20 @@ def main():
         model_name = st.text_input("OpenAI model for content analysis", value=DEFAULT_MODEL)
         fast_mode = st.checkbox("Fast demo mode", value=False, help="Caps the LLM sample closer to 2,000 words.")
 # --- EXPLAINABLE AI (XAI) SIDEBAR CONFIGURATION ---
-st.sidebar.markdown("---")
-st.sidebar.subheader("🛠️ Developer Sandbox")
-dev_inspect_mode = st.sidebar.toggle(
-    "Enable Inspect Mode (XAI)", 
-    value=False,
-    help="Surfaces internal calculation matrices, structural token allocations, and raw model schema parameters live."
-)
-st.header("1. Add Source Content")
-upload_tab, paste_tab = st.tabs(["Upload file", "Paste text"])
+        st.sidebar.markdown("---")
+        st.sidebar.subheader("🛠️ Developer Sandbox")
+        dev_inspect_mode = st.sidebar.toggle(
+        "Enable Inspect Mode (XAI)", 
+        value=False,
+        help="Surfaces internal calculation matrices, structural token allocations, and raw model schema parameters live."
+        )
+        st.header("1. Add Source Content")
+        upload_tab, paste_tab = st.tabs(["Upload file", "Paste text"])
 
-extracted_text = ""
-metadata: Dict[str, Any] = {}
-file_name = "pasted_text"
-file_type = "text"
+        extracted_text = ""
+        metadata: Dict[str, Any] = {}
+        file_name = "pasted_text"
+        file_type = "text"
 
     with upload_tab:
         uploaded_file = st.file_uploader(
