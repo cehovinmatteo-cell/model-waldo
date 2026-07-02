@@ -1195,20 +1195,20 @@ def main():
             value=False,
             help="Surfaces internal calculation matrices, structural token allocations, and raw model schema parameters live."
         )
-st.header("1. Add Source Content")
-upload_tab, paste_tab = st.tabs(["Upload file", "Paste text"])
-
 extracted_text = ""
 metadata: Dict[str, Any] = {}
 file_name = "pasted_text"
 file_type = "text"
 
-    with upload_tab:
-        uploaded_file = st.file_uploader(
-            "Upload source content",
-            type=["txt", "csv", "xlsx", "docx", "pdf", "json", "html", "htm"],
-            help="MVP supports text-based files only. Scanned PDFs and OCR are out of scope.",
-        )
+st.header("1. Add Source Content")
+upload_tab, paste_tab = st.tabs(["Upload file", "Paste text"])
+
+with upload_tab:
+    uploaded_file = st.file_uploader(
+        "Upload source content",
+        type=["txt", "csv", "xlsx", "docx", "pdf", "json", "html", "htm"],
+        help="MVP supports text-based files only. Scanned PDFs and OCR are out of scope.",
+    )
         if uploaded_file:
             file_name = uploaded_file.name
             ext = file_name.split(".")[-1].lower()
