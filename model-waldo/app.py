@@ -69,6 +69,48 @@ TARGET_LANGUAGE_OPTIONS = [
 
 SOURCE_LANGUAGE = "English"
 
+def render_xai_inspect_panel(analysis: dict, metadata: dict, ranked_df: pd.DataFrame, top_provider: pd.Series):
+    """
+    Renders an expandable deep-dive diagnostic dashboard breaking down the 
+    underlying heuristic logic and scoring criteria behind Model-Waldo's output.
+    """
+    st.markdown("---")
+    with st.expander("🕵️‍♂️ Model-Waldo System Inspection Panel (XAI)", expanded=True):
+        st.markdown("### 🔬 Strategic Algorithmic Trace Overview")
+        st.caption("This administrative telemetry dashboard breaks down how the current weights and prompt parameters yielded the active recommendation matrix.")
+
+        # Tab Layout for Clean Telemetry Organization
+        tab_token, tab_weights, tab_matrix = st.tabs([
+            "🧠 Structured LLM Schema", 
+            "⚖️ Core Metadata Metrics", 
+            "📊 Provider Score Matrix"
+        ])
+
+        with tab_token:
+            st.markdown("#### Raw Extracted Model Output Variables")
+            st.json(analysis)
+            st.caption("This data structure represents the direct type-safetied contract returned via the custom GPT schema wrapper.")
+
+        with tab_weights:
+            st.markdown("#### Syntactic Document Context Profiles")
+            col1, col2 = st.columns(2)
+            with col1:
+                st.metric(label="Total Analyzed Character Footprint", value=f"{metadata.get('char_count', 0)} chars")
+                st.metric(label="Detected Structural UI Placeholders", value=metadata.get('placeholder_count', 0))
+            with col2:
+                st.metric(label="File Extraction Source Paradigm", value=str(metadata.get('file_type', 'Raw Copy-Paste Input')))
+                st.metric(label="Target Extraction Word Count Sample Limit", value=metadata.get('llm_sample_word_limit', 'Not Scoped'))
+
+        with tab_matrix:
+            st.markdown("#### Comprehensive Provider Metric Evaluations")
+            st.dataframe(
+                ranked_df[['Provider', 'Score', 'Base Quality Score', 'Dynamic Multiplier applied', 'Match Strategy']].sort_values(by="Score", ascending=False),
+                use_container_width=True,
+                hide_index=True
+            )
+            st.info(
+                f"**Engine Routing Trace Summary:** `{top_provider['Provider']}` out-indexed competing localization nodes due to optimization matching for target parameters."
+            )
 ANALYSIS_SCHEMA: Dict[str, Any] = {
     "type": "object",
     "additionalProperties": False,
@@ -1145,7 +1187,14 @@ def main():
         }
         model_name = st.text_input("OpenAI model for content analysis", value=DEFAULT_MODEL)
         fast_mode = st.checkbox("Fast demo mode", value=False, help="Caps the LLM sample closer to 2,000 words.")
-
+# --- EXPLAINABLE AI (XAI) SIDEBAR CONFIGURATION ---
+st.sidebar.markdown("---")
+st.sidebar.subheader("🛠️ Developer Sandbox")
+dev_inspect_mode = st.sidebar.toggle(
+    "Enable Inspect Mode (XAI)", 
+    value=False,
+    help="Surfaces internal calculation matrices, structural token allocations, and raw model schema parameters live."
+)
     st.header("1. Add Source Content")
     upload_tab, paste_tab = st.tabs(["Upload file", "Paste text"])
 
@@ -1267,7 +1316,13 @@ def main():
             pair_complexity=pair_complexity,
             content_requirements=content_requirements,
         )
-
+if dev_inspect_mode:
+                render_xai_inspect_panel(
+                    analysis=analysis_results, 
+                    metadata=metadata, 
+                    ranked_df=ranked_providers, 
+                    top_provider=top_provider
+                )
         render_content_analysis_details(analysis, content_requirements, target_lang)
 
         with st.expander("5. Model Ranking", expanded=False):
