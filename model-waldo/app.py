@@ -1,7 +1,9 @@
+import hashlib
 import json
 import os
 import random
 import re
+from copy import deepcopy
 from dataclasses import dataclass
 from io import BytesIO, StringIO
 from typing import Any, Dict, List, Optional, Tuple
@@ -22,6 +24,8 @@ LARGE_WORD_THRESHOLD = 8000
 LARGE_CHAR_THRESHOLD = 40000
 LARGE_ROW_THRESHOLD = 500
 LARGE_PAGE_THRESHOLD = 15
+ANALYSIS_CACHE_SESSION_KEY = "model_waldo_analysis_cache"
+MAX_ANALYSIS_CACHE_ITEMS = 20
 
 CONTENT_TYPES = [
     "ui_strings",
@@ -300,6 +304,57 @@ def build_metadata(text: str, file_name: str = "pasted_text", file_type: str = "
         "tags_sample": tags[:10],
         "repeated_candidate_terms": candidate_repeated_terms(text),
     }
+
+
+def get_analysis_cache() -> Dict[str, Dict[str, Any]]:
+    """Return the local in-memory analysis cache for the current Streamlit session."""
+    if ANALYSIS_CACHE_SESSION_KEY not in st.session_state:
+        st.session_state[ANALYSIS_CACHE_SESSION_KEY] = {}
+    return st.session_state[ANALYSIS_CACHE_SESSION_KEY]
+
+
+def build_analysis_cache_key(
+    text_sample: str,
+    source_lang: str,
+    target_lang: str,
+    known_domain: str,
+    content_requirements: Dict[str, bool],
+    model_name: str,
+    sample_words: int,
+) -> str:
+    """Build a deterministic local cache key for expensive LLM content analysis.
+
+    MD5 is used only as a fast local lookup key, not for security. The key includes
+    the extracted source sample and language pair, plus analysis inputs that can
+    change the structured classification result. Provider scoring is intentionally
+    not cached, so dynamic provider re-scoring still runs on every request.
+    """
+    cache_payload = {
+        "source_text_md5": hashlib.md5(text_sample.encode("utf-8")).hexdigest(),
+        "source_language": source_lang,
+        "target_language": target_lang,
+        "known_domain": known_domain,
+        "content_requirements": content_requirements,
+        "model_name": model_name,
+        "sample_words": sample_words,
+    }
+    serialized = json.dumps(cache_payload, sort_keys=True, ensure_ascii=False)
+    return hashlib.md5(serialized.encode("utf-8")).hexdigest()
+
+
+def cache_analysis_result(cache_key: str, analysis: Dict[str, Any]) -> None:
+    """Store structured content analysis in local memory and bound cache growth."""
+    cache = get_analysis_cache()
+    cache[cache_key] = deepcopy(analysis)
+    while len(cache) > MAX_ANALYSIS_CACHE_ITEMS:
+        oldest_key = next(iter(cache))
+        cache.pop(oldest_key, None)
+
+
+def get_cached_analysis(cache_key: str) -> Optional[Dict[str, Any]]:
+    """Return a deep copy of cached analysis so later policy updates do not mutate it."""
+    cached = get_analysis_cache().get(cache_key)
+    return deepcopy(cached) if cached is not None else None
 
 
 def fallback_analysis(text: str, metadata: Dict[str, Any], known_domain: str) -> Dict[str, Any]:
@@ -1177,9 +1232,24 @@ def main():
         text_sample = make_sample(extracted_text, max_words=sample_words)
         metadata["llm_sample_word_limit"] = sample_words
         metadata["language_pair_complexity"] = pair_complexity
+        analysis_cache_key = build_analysis_cache_key(
+            text_sample=text_sample,
+            source_lang=source_lang,
+            target_lang=target_lang,
+            known_domain=selected_content_type,
+            content_requirements=content_requirements,
+            model_name=model_name,
+            sample_words=sample_words,
+        )
+        cache_hit = False
 
         with st.spinner("Analyzing source content and scoring providers..."):
-            if api_key:
+            cached_analysis = get_cached_analysis(analysis_cache_key)
+            if cached_analysis is not None:
+                analysis = cached_analysis
+                analysis_mode = "Cached structured analysis"
+                cache_hit = True
+            elif api_key:
                 try:
                     analysis = call_openai_analysis(
                         text_sample=text_sample,
@@ -1191,14 +1261,17 @@ def main():
                         model_name=model_name,
                         api_key=api_key,
                     )
+                    cache_analysis_result(analysis_cache_key, analysis)
                     analysis_mode = "OpenAI structured analysis"
                 except Exception as e:
                     st.error(str(e))
                     st.warning("Falling back to demo rule-based analysis so the app can continue.")
                     analysis = fallback_analysis(extracted_text, metadata, known_domain)
+                    cache_analysis_result(analysis_cache_key, analysis)
                     analysis_mode = "Fallback rule-based analysis"
             else:
                 analysis = fallback_analysis(extracted_text, metadata, known_domain)
+                cache_analysis_result(analysis_cache_key, analysis)
                 analysis_mode = "Fallback rule-based analysis"
 
             analysis = apply_content_type_context(analysis, known_domain)
@@ -1217,7 +1290,7 @@ def main():
                 metadata=metadata,
             )
 
-        st.caption(f"Analysis mode: {analysis_mode}")
+        st.caption(f"Analysis mode: {analysis_mode}" + (" · cache hit" if cache_hit else ""))
 
         top = ranked.iloc[0]
         render_decision_dashboard(
