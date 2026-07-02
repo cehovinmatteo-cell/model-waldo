@@ -1191,17 +1191,17 @@ def main():
         st.sidebar.markdown("---")
         st.sidebar.subheader("🛠️ Developer Sandbox")
         dev_inspect_mode = st.sidebar.toggle(
-        "Enable Inspect Mode (XAI)", 
-        value=False,
-        help="Surfaces internal calculation matrices, structural token allocations, and raw model schema parameters live."
+            "Enable Inspect Mode (XAI)", 
+            value=False,
+            help="Surfaces internal calculation matrices, structural token allocations, and raw model schema parameters live."
         )
-        st.header("1. Add Source Content")
-        upload_tab, paste_tab = st.tabs(["Upload file", "Paste text"])
+st.header("1. Add Source Content")
+upload_tab, paste_tab = st.tabs(["Upload file", "Paste text"])
 
-        extracted_text = ""
-        metadata: Dict[str, Any] = {}
-        file_name = "pasted_text"
-        file_type = "text"
+extracted_text = ""
+metadata: Dict[str, Any] = {}
+file_name = "pasted_text"
+file_type = "text"
 
     with upload_tab:
         uploaded_file = st.file_uploader(
