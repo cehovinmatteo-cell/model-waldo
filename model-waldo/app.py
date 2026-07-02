@@ -1198,10 +1198,10 @@ dev_inspect_mode = st.sidebar.toggle(
 st.header("1. Add Source Content")
 upload_tab, paste_tab = st.tabs(["Upload file", "Paste text"])
 
-    extracted_text = ""
-    metadata: Dict[str, Any] = {}
-    file_name = "pasted_text"
-    file_type = "text"
+extracted_text = ""
+metadata: Dict[str, Any] = {}
+file_name = "pasted_text"
+file_type = "text"
 
     with upload_tab:
         uploaded_file = st.file_uploader(
