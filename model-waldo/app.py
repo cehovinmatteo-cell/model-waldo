@@ -998,13 +998,44 @@ def render_decision_dashboard(
 ):
     st.header("2. Recommendation")
 
+    # Extract confidence metric safely (default to low if completely missing)
+    confidence = float(analysis.get("content_type_confidence", 0.50))
+    confidence_percentage = int(confidence * 100)
+
+    # Inject a dynamic visual buffer badge system based on model assurance
+    if confidence >= 0.85:
+        st.success(
+            f"🎯 **High Confidence Routing Strategy Matrix:** Model-Waldo is **{confidence_percentage}%** confident in this classification profile. The risk coefficient is well within standard automated parameters.",
+            icon="✅"
+        )
+    elif 0.70 <= confidence < 0.85:
+        st.warning(
+            f"⚠️ **Ambiguous Content Density Alert:** Model-Waldo is only **{confidence_percentage}%** confident in this structural parsing analysis. Review alternative model outputs below if the primary choice feels unaligned.",
+            icon="⚡"
+        )
+    else:
+        st.error(
+            f"🚨 **Critical Classification Variance Warning:** Model-Waldo outputted a **{confidence_percentage}%** confidence floor for this sample dataset. Cross-referencing alternative providers in the collapsed matrix view below is strongly recommended.",
+            icon="🛑"
+        )
+
+    # Create your core metric configuration layout
     rec_col, analysis_col, review_col = st.columns(3)
 
     with rec_col:
+        # Determine border aesthetics based on confidence scoring thresholds
+        border_status = "red" if confidence < 0.70 else ("orange" if confidence < 0.85 else "green")
+        
+        # Inject custom styling directly to draw eyes to structural instability
         with st.container(border=True):
             st.subheader("Recommended Model")
             st.markdown(f"## {top['Provider']}")
-            st.markdown("**Recommended**")
+            
+            if confidence < 0.70:
+                st.caption(f"⚠️ *Review Alternative Providers below*")
+            else:
+                st.markdown("**Recommended**")
+                
             st.divider()
             st.write(f"**Score:** {top['Score']} / 100")
             alt = strong_alternative(ranked)
@@ -1022,11 +1053,20 @@ def render_decision_dashboard(
     with review_col:
         with st.container(border=True):
             st.subheader("Review / QA")
-            st.write(f"**Localized output review**  \n{localized_output_review_label(analysis)}")
-            st.write(f"**Review type**  \n{review_type_label(analysis)}")
-            st.write(f"**Reason**  \n{short_review_reason(analysis)}")
+            
+            # If model confidence drops below baseline requirements, force manual review signals
+            if confidence < 0.70:
+                st.write(f"**Localized output review**  \n🔴 Escalated to Mandatory")
+                st.write(f"**Review type**  \nLinguistic Peer Review")
+                st.write(f"**Reason**  \nLow classification mapping confidence ({confidence_percentage}%). Verification required.")
+            else:
+                st.write(f"**Localized output review**  \n{localized_output_review_label(analysis)}")
+                st.write(f"**Review type**  \n{review_type_label(analysis)}")
+                st.write(f"**Reason**  \n{short_review_reason(analysis)}")
+                
             st.write(f"**QA focus**  \n{qa_focus(analysis, content_requirements)}")
 
+    # Summary overview layout stays transparent
     with st.container(border=True):
         st.subheader("Why this recommendation?")
         for item in build_why_bullets(top, ranked, analysis, pair_complexity, content_requirements):
