@@ -69,48 +69,6 @@ TARGET_LANGUAGE_OPTIONS = [
 
 SOURCE_LANGUAGE = "English"
 
-def render_xai_inspect_panel(analysis: dict, metadata: dict, ranked_df: pd.DataFrame, top_provider: pd.Series):
-    """
-    Renders an expandable deep-dive diagnostic dashboard breaking down the 
-    underlying heuristic logic and scoring criteria behind Model-Waldo's output.
-    """
-    st.markdown("---")
-    with st.expander("🕵️‍♂️ Model-Waldo System Inspection Panel (XAI)", expanded=True):
-        st.markdown("### 🔬 Strategic Algorithmic Trace Overview")
-        st.caption("This administrative telemetry dashboard breaks down how the current weights and prompt parameters yielded the active recommendation matrix.")
-
-        # Tab Layout for Clean Telemetry Organization
-        tab_token, tab_weights, tab_matrix = st.tabs([
-            "🧠 Structured LLM Schema", 
-            "⚖️ Core Metadata Metrics", 
-            "📊 Provider Score Matrix"
-        ])
-
-        with tab_token:
-            st.markdown("#### Raw Extracted Model Output Variables")
-            st.json(analysis)
-            st.caption("This data structure represents the direct type-safetied contract returned via the custom GPT schema wrapper.")
-
-        with tab_weights:
-            st.markdown("#### Syntactic Document Context Profiles")
-            col1, col2 = st.columns(2)
-            with col1:
-                st.metric(label="Total Analyzed Character Footprint", value=f"{metadata.get('char_count', 0)} chars")
-                st.metric(label="Detected Structural UI Placeholders", value=metadata.get('placeholder_count', 0))
-            with col2:
-                st.metric(label="File Extraction Source Paradigm", value=str(metadata.get('file_type', 'Raw Copy-Paste Input')))
-                st.metric(label="Target Extraction Word Count Sample Limit", value=metadata.get('llm_sample_word_limit', 'Not Scoped'))
-
-        with tab_matrix:
-            st.markdown("#### Comprehensive Provider Metric Evaluations")
-            st.dataframe(
-                ranked_df[['Provider', 'Score', 'Base Quality Score', 'Dynamic Multiplier applied', 'Match Strategy']].sort_values(by="Score", ascending=False),
-                use_container_width=True,
-                hide_index=True
-            )
-            st.info(
-                f"**Engine Routing Trace Summary:** `{top_provider['Provider']}` out-indexed competing localization nodes due to optimization matching for target parameters."
-            )
 ANALYSIS_SCHEMA: Dict[str, Any] = {
     "type": "object",
     "additionalProperties": False,
@@ -1040,44 +998,13 @@ def render_decision_dashboard(
 ):
     st.header("2. Recommendation")
 
-    # Extract confidence metric safely (default to low if completely missing)
-    confidence = float(analysis.get("content_type_confidence", 0.50))
-    confidence_percentage = int(confidence * 100)
-
-    # Inject a dynamic visual buffer badge system based on model assurance
-    if confidence >= 0.85:
-        st.success(
-            f"🎯 **High Confidence Routing Strategy Matrix:** Model-Waldo is **{confidence_percentage}%** confident in this classification profile. The risk coefficient is well within standard automated parameters.",
-            icon="✅"
-        )
-    elif 0.70 <= confidence < 0.85:
-        st.warning(
-            f"⚠️ **Ambiguous Content Density Alert:** Model-Waldo is only **{confidence_percentage}%** confident in this structural parsing analysis. Review alternative model outputs below if the primary choice feels unaligned.",
-            icon="⚡"
-        )
-    else:
-        st.error(
-            f"🚨 **Critical Classification Variance Warning:** Model-Waldo outputted a **{confidence_percentage}%** confidence floor for this sample dataset. Cross-referencing alternative providers in the collapsed matrix view below is strongly recommended.",
-            icon="🛑"
-        )
-
-    # Create your core metric configuration layout
     rec_col, analysis_col, review_col = st.columns(3)
 
     with rec_col:
-        # Determine border aesthetics based on confidence scoring thresholds
-        border_status = "red" if confidence < 0.70 else ("orange" if confidence < 0.85 else "green")
-        
-        # Inject custom styling directly to draw eyes to structural instability
         with st.container(border=True):
             st.subheader("Recommended Model")
             st.markdown(f"## {top['Provider']}")
-            
-            if confidence < 0.70:
-                st.caption(f"⚠️ *Review Alternative Providers below*")
-            else:
-                st.markdown("**Recommended**")
-                
+            st.markdown("**Recommended**")
             st.divider()
             st.write(f"**Score:** {top['Score']} / 100")
             alt = strong_alternative(ranked)
@@ -1095,20 +1022,11 @@ def render_decision_dashboard(
     with review_col:
         with st.container(border=True):
             st.subheader("Review / QA")
-            
-            # If model confidence drops below baseline requirements, force manual review signals
-            if confidence < 0.70:
-                st.write(f"**Localized output review**  \n🔴 Escalated to Mandatory")
-                st.write(f"**Review type**  \nLinguistic Peer Review")
-                st.write(f"**Reason**  \nLow classification mapping confidence ({confidence_percentage}%). Verification required.")
-            else:
-                st.write(f"**Localized output review**  \n{localized_output_review_label(analysis)}")
-                st.write(f"**Review type**  \n{review_type_label(analysis)}")
-                st.write(f"**Reason**  \n{short_review_reason(analysis)}")
-                
+            st.write(f"**Localized output review**  \n{localized_output_review_label(analysis)}")
+            st.write(f"**Review type**  \n{review_type_label(analysis)}")
+            st.write(f"**Reason**  \n{short_review_reason(analysis)}")
             st.write(f"**QA focus**  \n{qa_focus(analysis, content_requirements)}")
 
-    # Summary overview layout stays transparent
     with st.container(border=True):
         st.subheader("Why this recommendation?")
         for item in build_why_bullets(top, ranked, analysis, pair_complexity, content_requirements):
@@ -1187,28 +1105,21 @@ def main():
         }
         model_name = st.text_input("OpenAI model for content analysis", value=DEFAULT_MODEL)
         fast_mode = st.checkbox("Fast demo mode", value=False, help="Caps the LLM sample closer to 2,000 words.")
-# --- EXPLAINABLE AI (XAI) SIDEBAR CONFIGURATION ---
-        st.sidebar.markdown("---")
-        st.sidebar.subheader("🛠️ Developer Sandbox")
-        dev_inspect_mode = st.sidebar.toggle(
-            "Enable Inspect Mode (XAI)", 
-            value=False,
-            help="Surfaces internal calculation matrices, structural token allocations, and raw model schema parameters live."
+
+    st.header("1. Add Source Content")
+    upload_tab, paste_tab = st.tabs(["Upload file", "Paste text"])
+
+    extracted_text = ""
+    metadata: Dict[str, Any] = {}
+    file_name = "pasted_text"
+    file_type = "text"
+
+    with upload_tab:
+        uploaded_file = st.file_uploader(
+            "Upload source content",
+            type=["txt", "csv", "xlsx", "docx", "pdf", "json", "html", "htm"],
+            help="MVP supports text-based files only. Scanned PDFs and OCR are out of scope.",
         )
-extracted_text = ""
-metadata: Dict[str, Any] = {}
-file_name = "pasted_text"
-file_type = "text"
-
-st.header("1. Add Source Content")
-upload_tab, paste_tab = st.tabs(["Upload file", "Paste text"])
-
-with upload_tab:
-    uploaded_file = st.file_uploader(
-        "Upload source content",
-        type=["txt", "csv", "xlsx", "docx", "pdf", "json", "html", "htm"],
-        help="MVP supports text-based files only. Scanned PDFs and OCR are out of scope.",
-    )
         if uploaded_file:
             file_name = uploaded_file.name
             ext = file_name.split(".")[-1].lower()
@@ -1316,13 +1227,7 @@ with upload_tab:
             pair_complexity=pair_complexity,
             content_requirements=content_requirements,
         )
-if dev_inspect_mode:
-                render_xai_inspect_panel(
-                    analysis=analysis_results, 
-                    metadata=metadata, 
-                    ranked_df=ranked_providers, 
-                    top_provider=top_provider
-                )
+
         render_content_analysis_details(analysis, content_requirements, target_lang)
 
         with st.expander("5. Model Ranking", expanded=False):
