@@ -954,6 +954,71 @@ def content_type_display(analysis: Dict[str, Any]) -> str:
     return content_type
 
 
+
+def get_content_type_confidence(analysis: Dict[str, Any]) -> float:
+    """Return content_type_confidence as a normalized 0.0-1.0 float.
+
+    The LLM schema asks for 0-1, but this also tolerates accidental
+    percentage values like 85 or string values like "0.85".
+    Missing or malformed values are treated as 0.0 so the UI fails safe.
+    """
+    raw_confidence = analysis.get("content_type_confidence", 0.0) if analysis else 0.0
+
+    try:
+        confidence = float(raw_confidence)
+    except (TypeError, ValueError):
+        return 0.0
+
+    if confidence > 1 and confidence <= 100:
+        confidence = confidence / 100
+
+    return max(0.0, min(1.0, confidence))
+
+
+def render_content_type_confidence_banner(analysis: Dict[str, Any]) -> None:
+    """Render the dashboard confidence banner for the LLM content classification.
+
+    High confidence: >= 85%
+    Medium confidence: 70%-84%
+    Low confidence: < 70%
+    """
+    confidence = get_content_type_confidence(analysis)
+    confidence_pct = round(confidence * 100)
+    content_type = title_case_signal(analysis.get("primary_content_type", "unknown"))
+
+    if confidence >= 0.85:
+        st.success(
+            f"High confidence classification: {content_type} ({confidence_pct}%). "
+            "Provider rankings can be used as the primary routing recommendation.",
+            icon="✅",
+        )
+    elif confidence >= 0.70:
+        st.warning(
+            f"Medium confidence classification: {content_type} ({confidence_pct}%). "
+            "Run a quick audit of the source sample before accepting the provider ranking.",
+            icon="⚠️",
+        )
+    else:
+        st.error(
+            f"Low confidence classification: {content_type} ({confidence_pct}%). "
+            "Do not trust the provider ranking as-is. Manually override the content type or review the source data before routing.",
+            icon="🚨",
+        )
+
+
+def content_type_confidence_label(analysis: Dict[str, Any]) -> str:
+    confidence = get_content_type_confidence(analysis)
+    confidence_pct = round(confidence * 100)
+
+    if confidence >= 0.85:
+        confidence_level = "High"
+    elif confidence >= 0.70:
+        confidence_level = "Medium"
+    else:
+        confidence_level = "Low"
+
+    return f"{confidence_level} ({confidence_pct}%)"
+
 def glossary_status(analysis: Dict[str, Any], content_requirements: Dict[str, bool]) -> str:
     if content_requirements.get("glossary_terminology_file_required"):
         return "Required"
@@ -1053,6 +1118,10 @@ def render_decision_dashboard(
 ):
     st.header("2. Recommendation")
 
+    # Confidence context must appear before the provider ranking so users do not
+    # give low-confidence routing decisions the same weight as high-confidence ones.
+    render_content_type_confidence_banner(analysis)
+
     rec_col, analysis_col, review_col = st.columns(3)
 
     with rec_col:
@@ -1070,6 +1139,7 @@ def render_decision_dashboard(
         with st.container(border=True):
             st.subheader("Content Analysis")
             st.write(f"**Content type**  \n{content_type_display(analysis)}")
+            st.write(f"**Classification confidence**  \n{content_type_confidence_label(analysis)}")
             st.write(f"**Language-pair complexity**  \n{title_case_signal(pair_complexity)}")
             st.write(f"**Glossary / terminology**  \n{glossary_status(analysis, content_requirements)}")
             st.write(f"**Format preservation**  \n{format_status(analysis, content_requirements)}")
